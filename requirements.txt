@@ -1,4 +1,6 @@
-PySide6>=6.6
-pyqtgraph>=0.13
+# PySide6 6.12.0 (shiboken 6.12.0) aborts with "none_dealloc: deallocating None"
+# inside QPainter calls after ~10 s of repeated repaints (seen with both pyqtgraph
+# and a plain QPainter widget). 6.9.x is stable; keep below 6.12 until fixed.
+PySide6>=6.6,<6.12
 pygame>=2.5
 pytest>=7

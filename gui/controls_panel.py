@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (QGroupBox, QVBoxLayout, QHBoxLayout, QPushButton,
-                               QComboBox, QDoubleSpinBox, QLabel, QFormLayout)
+                               QComboBox, QDoubleSpinBox, QLabel, QFormLayout, QCheckBox)
 
 from rov_sim.safety import Mode
 
@@ -14,6 +14,8 @@ class ControlsPanel(QGroupBox):
     mode_changed = Signal(object)          # Mode
     target_depth_set = Signal(float)
     target_heading_set = Signal(float)
+    log_toggled = Signal(bool)
+    current_toggled = Signal(bool)
 
     def __init__(self, parent=None):
         super().__init__("Controls", parent)
@@ -57,9 +59,22 @@ class ControlsPanel(QGroupBox):
         form.addRow("Target heading", self._with_button(self.heading_spin, self.heading_apply))
         lay.addLayout(form)
 
+        # Extras: CSV logging, simulated current, joystick status
+        extras = QFormLayout()
+        self.log_btn = QPushButton("Start CSV log")
+        self.log_btn.setCheckable(True); self.log_btn.setFocusPolicy(Qt.NoFocus)
+        extras.addRow("Logging", self.log_btn)
+        self.current_chk = QCheckBox("Simulated water current")
+        self.current_chk.setFocusPolicy(Qt.NoFocus)
+        extras.addRow("Environment", self.current_chk)
+        self.joy_lbl = QLabel("none detected (keyboard active)")
+        self.joy_lbl.setObjectName("helpText")
+        extras.addRow("Joystick", self.joy_lbl)
+        lay.addLayout(extras)
+
         help_lbl = QLabel(
             "Keyboard (Manual):  W/S surge   A/D sway   Q/E yaw   R/F heave\n"
-            "Space = emergency disarm.  Click the dashboard to give it key focus."
+            "Space = emergency disarm.  Gamepad: left stick surge/sway, right stick yaw/heave, A = arm, B = disarm."
         )
         help_lbl.setObjectName("helpText")
         help_lbl.setWordWrap(True)
@@ -75,8 +90,17 @@ class ControlsPanel(QGroupBox):
         self.heading_apply.clicked.connect(self._apply_heading)
         self.depth_spin.editingFinished.connect(self._apply_depth)
         self.heading_spin.editingFinished.connect(self._apply_heading)
+        self.log_btn.toggled.connect(self._on_log_toggled)
+        self.current_chk.toggled.connect(self.current_toggled)
         self._sync_target_enabled(Mode.MANUAL)
         self.mode_changed.connect(self._sync_target_enabled)
+
+    def _on_log_toggled(self, on: bool) -> None:
+        self.log_btn.setText("Stop CSV log" if on else "Start CSV log")
+        self.log_toggled.emit(on)
+
+    def set_joystick_name(self, name: str) -> None:
+        self.joy_lbl.setText(name if name else "none detected (keyboard active)")
 
     @staticmethod
     def _with_button(spin, btn):

@@ -21,6 +21,8 @@ from .map_view import MapView
 from .depth_plot import DepthPlot
 from .telemetry_panel import TelemetryPanel
 from .controls_panel import ControlsPanel
+from .joystick import JoystickReader
+from logging_util.csv_logger import CsvLogger
 
 SIM_HZ = 50
 UI_HZ = 20
@@ -49,7 +51,8 @@ class MainWindow(QMainWindow):
         self.depth_hold = DepthHold()
         self.heading_hold = HeadingHold()
         self._keys: set[int] = set()
-        self._joystick_cmd: Command | None = None   # set by joystick module later
+        self._joystick_cmd: Command | None = None   # latest gamepad command, None = no device
+        self.logger = CsvLogger("logs")
         self._last_tick = time.monotonic()
         self._safe_cmd = Command.zero()
 
@@ -88,6 +91,15 @@ class MainWindow(QMainWindow):
         self.controls.mode_changed.connect(self.set_mode)
         self.controls.target_depth_set.connect(self._set_target_depth)
         self.controls.target_heading_set.connect(self.heading_hold.set_target)
+        self.controls.log_toggled.connect(self._toggle_log)
+        self.controls.current_toggled.connect(self._toggle_current)
+
+        self.joystick = JoystickReader(parent=self)
+        self.joystick.command.connect(self.set_joystick_command)
+        self.joystick.arm_pressed.connect(self.arm)
+        self.joystick.disarm_pressed.connect(self.disarm)
+        self.joystick.device_changed.connect(self.controls.set_joystick_name)
+        self.controls.set_joystick_name(self.joystick.device_name)
 
         central.setFocusPolicy(Qt.StrongFocus)
         central.setFocus()
@@ -132,6 +144,19 @@ class MainWindow(QMainWindow):
     def _set_target_depth(self, depth_m: float) -> None:
         self.depth_hold.set_target(depth_m)
         self.depth_plot.set_target(self.depth_hold.target if self.mode is Mode.DEPTH_HOLD else None)
+
+    def _toggle_log(self, on: bool) -> None:
+        if on:
+            path = self.logger.start()
+            self.status.showMessage(f"Logging to {path}")
+        else:
+            path = self.logger.stop()
+            self.status.showMessage(f"Log saved: {path} ({self.logger.rows} rows)", 5000)
+
+    def _toggle_current(self, on: bool) -> None:
+        # ~0.2 m/s current flowing north-east; enough to see the vehicle drift on the map
+        self.sim.p.current_north = 0.12 if on else 0.0
+        self.sim.p.current_east = 0.16 if on else 0.0
 
     def _reset_controllers(self) -> None:
         self.depth_hold.reset()
@@ -199,11 +224,14 @@ class MainWindow(QMainWindow):
             f"   |   t = {s.t:6.1f} s")
         self.depth_plot.append(s)
         self._ui_frame += 1
+        lat, lon = self.sim.lat_lon()
         if self._ui_frame % (UI_HZ // 2) == 0:       # map marker at 2 Hz
-            lat, lon = self.sim.lat_lon()
             self.map_view.update_rov(lat, lon, s.yaw)
+        if self._ui_frame % 2 == 0:                  # CSV at 10 Hz
+            self.logger.log(s, self.armed.value, self.mode.value, lat, lon)
         self.state_updated.emit(s)
 
     def closeEvent(self, ev):
         self.sim_timer.stop(); self.ui_timer.stop()
+        self.logger.stop()
         super().closeEvent(ev)

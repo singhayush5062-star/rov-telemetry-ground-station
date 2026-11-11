@@ -10,8 +10,8 @@
 | Concern | Choice | Why (verified on this machine) |
 |---|---|---|
 | Language | **Python 3.10** (system, already installed) | Assessment explicitly accepts Python. No compile/link cycle → fastest iteration in 2 days. |
-| GUI toolkit | **PySide6 6.12** (official Qt for Python, LGPL) via pip | One `pip install` gives Qt 6 Widgets + QtCharts + **QtWebEngine** in a single wheel. System Qt 5 here lacks WebEngine/Location/Charts for both C++ and PyQt5, so C++ would need `sudo apt` for several `-dev` packages plus CMake setup — too slow for the window. |
-| Depth-vs-time plot | **pyqtgraph 0.14** | Battle-tested real-time plotting for Qt; 60 Hz updates with <1 ms cost. Far less code than QtCharts. |
+| GUI toolkit | **PySide6 6.9.x** (official Qt for Python, LGPL) via pip — pinned `<6.12` | One `pip install` gives Qt 6 Widgets + QtCharts + **QtWebEngine** in a single wheel. System Qt 5 here lacks WebEngine/Location/Charts for both C++ and PyQt5, so C++ would need `sudo apt` for several `-dev` packages plus CMake setup — too slow for the window. |
+| Depth-vs-time plot | **Hand-drawn `QPainter` widget** (~120 lines) | pyqtgraph 0.14 crashed on PySide6 6.12 during the Phase 4 soak; a rolling 1,200-point polyline needs no library, has zero dependencies and is fully explainable at interview. |
 | OpenStreetMap view | **Leaflet 1.9 (CDN) + OSM tiles** inside `QWebEngineView` | The standard, verified way to embed OSM in a Qt desktop app. One static `map.html`, marker moved with `runJavaScript()`. Still a native desktop app (the web view is a widget inside the window, not a browser app). |
 | Joystick | **pygame 2.6** joystick module, polled by a `QTimer` | Most reliable cross-platform gamepad API in Python; Qt 6 dropped QtGamepad. Keyboard works without it. |
 | Simulation | Pure Python class (no Qt dependency), 50 Hz `QTimer` tick | Simple 4-DOF kinematics + first-order thruster lag + drag. Pure Python → unit-testable with pytest. |
@@ -83,7 +83,7 @@ rov_ground_station/
 ```bash
 cd ~/Desktop/ROV_SIMULATOR
 python3 -m venv .venv && source .venv/bin/activate
-pip install PySide6 pyqtgraph pygame pytest
+pip install -r requirements.txt
 ```
 - Smoke test: a 20-line script that opens a `QMainWindow` with a `QWebEngineView` loading openstreetmap.org and a `pyqtgraph` plot. If the window appears, the stack is proven.
 - Qt6 runtime deps (`libxcb-cursor0`, `libnss3`, `libegl1`) are already installed on this machine — checked 11 Nov.
@@ -172,3 +172,15 @@ pip install PySide6 pyqtgraph pygame pytest
 - Why the sim runs on the GUI thread (cost << 1 ms) and how you'd move it to a `QThread` if the model grew.
 - How the safety gate sits *between* input and simulator so disarm/watchdog cannot be bypassed.
 - Why Python/PySide6 over C++ for this timeline and what would change in a C++ port (same architecture, `QObject` signals instead of callbacks).
+
+---
+
+## 7. Decisions log (updated during build)
+
+| Date | Decision | Reason |
+|---|---|---|
+| 11 Nov | Key handling via `keyPressEvent` on the window, not an app-wide event filter | An application-wide `QObject.eventFilter` segfaults PySide6 as soon as a `QWebEngineView` exists (Chromium's internal widget events). |
+| 11 Nov | `LocalContentCanAccessRemoteUrls` + `LocalContentCanAccessFileUrls` set on the map view | file:// pages cannot load OSM tiles without the first; on Qt 6.12 the first alone silently breaks the local Leaflet script. |
+| 11 Nov | Leaflet 1.9.4 vendored under `gui/vendor/leaflet` | No CDN dependency at demo time; only tiles need the network. |
+| 11 Nov | Dropped pyqtgraph, wrote a `QPainter` plot | pyqtgraph aborted with a refcount error after ~10 s on PySide6 6.12. |
+| 11 Nov | PySide6 pinned `<6.12` (6.9.3 installed) | The same refcount abort reproduced in a plain `QPainter.drawLine` call on 6.12.0; 6.9.3 passed a 2-minute soak (5,875 ticks, p99 22.7 ms, memory flat). |
