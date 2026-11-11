@@ -4,3 +4,4 @@ __pycache__/
 logs/*.csv
 .pytest_cache/
 dist/
+docs/soak_screenshot.png

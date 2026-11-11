@@ -149,6 +149,11 @@ water-current drift, lat/lon offset, PID clamping/anti-windup, depth-hold
 convergence (both directions), heading-hold shortest path, operator axes kept
 in hold modes, joystick dead-zone/mapping, CSV logger output.
 
+## Tools
+
+* `tools/soak_test.py` – 2-minute responsiveness soak (tick jitter, memory, CSV rows).
+* `tools/record_walkthrough.py` – regenerates `docs/walkthrough.mp4` from a scripted scenario (needs ffmpeg).
+
 ## Known limitations
 
 * Map tiles need internet access; the marker, trail and HUD still work offline.
