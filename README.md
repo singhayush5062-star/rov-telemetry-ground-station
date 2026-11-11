@@ -7,6 +7,7 @@ Built for the Coratia Technologies software-internship technical assessment.
 ![dashboard](docs/dashboard.png)
 
 Video walkthrough: [`docs/walkthrough.mp4`](docs/walkthrough.mp4) (77 s, interface only, recorded from the running app).
+Code walkthrough: [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md) explains each module and the design decisions.
 
 ## Features
 
