@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>ROV map</title>
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css"
+>
+<script src="vendor/leaflet/leaflet.js"
+></script>
+<style>
+  html, body, #map { height: 100%; margin: 0; background: #121620; }
+  .rov-icon { width: 0; height: 0; }
+  .rov-arrow { position: absolute; left: -12px; top: -12px; width: 24px; height: 24px;
+               transform-origin: 50% 50%; }
+  .leaflet-control-attribution { font-size: 9px; }
+  #hud { position: absolute; right: 8px; top: 8px; z-index: 1000; background: rgba(18,22,32,0.85);
+         color: #e6e9ef; font: 12px monospace; padding: 6px 8px; border-radius: 4px; }
+  #offline { position: absolute; left: 8px; top: 8px; z-index: 1000; display: none;
+             background: rgba(138,43,43,0.9); color: #fff; font: 12px sans-serif; padding: 4px 8px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div id="hud">lat 0.000000<br>lon 0.000000<br>hdg 0.0°</div>
+<div id="offline">Map tiles unavailable (offline) – vehicle track still shown</div>
+<script>
+  var ORIGIN = [18.5204, 73.8567];
+  var map = L.map('map', { zoomControl: true, attributionControl: true }).setView(ORIGIN, 18);
+  var tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  }).addTo(map);
+  var tileErrors = 0;
+  tiles.on('tileerror', function () { if (++tileErrors > 3) document.getElementById('offline').style.display = 'block'; });
+  tiles.on('tileload', function () { tileErrors = 0; document.getElementById('offline').style.display = 'none'; });
+
+  var arrowSvg = '<svg class="rov-arrow" viewBox="0 0 24 24"><polygon points="12,2 20,22 12,17 4,22" ' +
+                 'fill="#39d353" stroke="#0b2d14" stroke-width="1.5"/></svg>';
+  var icon = L.divIcon({ className: 'rov-icon', html: arrowSvg, iconSize: [0, 0] });
+  var marker = L.marker(ORIGIN, { icon: icon, zIndexOffset: 1000 }).addTo(map);
+  L.circleMarker(ORIGIN, { radius: 4, color: '#ffb347', fillOpacity: 1 }).addTo(map).bindTooltip('Launch point');
+  var trail = L.polyline([], { color: '#7fc8ff', weight: 2, opacity: 0.9 }).addTo(map);
+  var MAX_TRAIL = 2000;
+  var follow = true;
+  map.on('dragstart', function () { follow = false; });
+
+  var followCtl = L.control({ position: 'bottomleft' });
+  followCtl.onAdd = function () {
+    var b = L.DomUtil.create('button'); b.textContent = 'Follow vehicle'; b.style.font = '12px sans-serif';
+    L.DomEvent.on(b, 'click', function (e) { L.DomEvent.stop(e); follow = true; map.panTo(marker.getLatLng()); });
+    return b;
+  };
+  followCtl.addTo(map);
+
+  // Called from Python: page().runJavaScript("updateRov(lat, lon, headingDeg)")
+  function updateRov(lat, lon, hdg) {
+    var ll = L.latLng(lat, lon);
+    marker.setLatLng(ll);
+    var el = marker.getElement();
+    if (el) { var a = el.querySelector('.rov-arrow'); if (a) a.style.transform = 'rotate(' + hdg + 'deg)'; }
+    var pts = trail.getLatLngs(); pts.push(ll); if (pts.length > MAX_TRAIL) pts.shift(); trail.setLatLngs(pts);
+    document.getElementById('hud').innerHTML = 'lat ' + lat.toFixed(6) + '<br>lon ' + lon.toFixed(6) + '<br>hdg ' + hdg.toFixed(1) + '°';
+    if (follow && !map.getBounds().pad(-0.3).contains(ll)) map.panTo(ll);
+    return true;
+  }
+  function clearTrail() { trail.setLatLngs([]); }
+</script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+Leaflet 1.9.4 - https://leafletjs.com
+Copyright (c) 2010-2023, Volodymyr Agafonkin
+Copyright (c) 2010-2011, CloudMade
+BSD 2-Clause License. Vendored unmodified from https://unpkg.com/leaflet@1.9.4/dist/
+Map tiles are fetched at runtime from OpenStreetMap (https://www.openstreetmap.org/copyright).

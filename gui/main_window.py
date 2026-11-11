@@ -10,14 +10,15 @@ from __future__ import annotations
 
 import time
 
-from PySide6.QtCore import Qt, QTimer, QEvent, Signal
+from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtWidgets import (QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
-                               QLabel, QApplication, QLineEdit, QAbstractSpinBox,
-                               QStatusBar)
+                               QLabel, QStatusBar)
 
 from rov_sim.simulator import ROVSimulator, Command, ROVState
 from rov_sim.safety import ArmState, Mode, InputWatchdog, apply_safety
 from rov_sim.controllers import DepthHold, HeadingHold, build_command
+from .map_view import MapView
+from .depth_plot import DepthPlot
 from .telemetry_panel import TelemetryPanel
 from .controls_panel import ControlsPanel
 
@@ -64,13 +65,19 @@ class MainWindow(QMainWindow):
         left_w = QWidget(); left_w.setLayout(left); left_w.setFixedWidth(360)
         root.addWidget(left_w)
 
-        self.right = QVBoxLayout()
-        self.plot_placeholder = QLabel("Depth vs time plot (Phase 3)")
-        self.map_placeholder = QLabel("OpenStreetMap view (Phase 3)")
-        for ph in (self.plot_placeholder, self.map_placeholder):
-            ph.setAlignment(Qt.AlignCenter); ph.setObjectName("placeholder")
-            self.right.addWidget(ph, 1)
-        root.addLayout(self.right, 1)
+        right = QVBoxLayout()
+        self.depth_plot = DepthPlot()
+        self.map_view = MapView()
+        # Neither view takes keyboard focus, so unhandled key events bubble up
+        # to MainWindow.keyPressEvent. (An application-wide event filter is NOT
+        # used: PySide6 crashes when such a filter sees QtWebEngine's internal
+        # widget events.)
+        self.depth_plot.setFocusPolicy(Qt.NoFocus)
+        self.map_view.setFocusPolicy(Qt.NoFocus)
+        right.addWidget(self.depth_plot, 1)
+        right.addWidget(self.map_view, 1)
+        root.addLayout(right, 1)
+        self._ui_frame = 0
 
         self.status = QStatusBar(); self.setStatusBar(self.status)
         self.thrust_lbl = QLabel(); self.status.addPermanentWidget(self.thrust_lbl)
@@ -79,12 +86,11 @@ class MainWindow(QMainWindow):
         self.controls.arm_requested.connect(self.arm)
         self.controls.disarm_requested.connect(self.disarm)
         self.controls.mode_changed.connect(self.set_mode)
-        self.controls.target_depth_set.connect(self.depth_hold.set_target)
+        self.controls.target_depth_set.connect(self._set_target_depth)
         self.controls.target_heading_set.connect(self.heading_hold.set_target)
 
         central.setFocusPolicy(Qt.StrongFocus)
         central.setFocus()
-        QApplication.instance().installEventFilter(self)
 
         # --- timers
         self.sim_timer = QTimer(self); self.sim_timer.setTimerType(Qt.PreciseTimer)
@@ -114,37 +120,49 @@ class MainWindow(QMainWindow):
         self._reset_controllers()
         s = self.sim.s
         if mode is Mode.DEPTH_HOLD:        # default target = current depth
-            self.depth_hold.set_target(s.depth)
+            self._set_target_depth(s.depth)
             self.controls.depth_spin.setValue(round(s.depth, 1))
-        elif mode is Mode.HEADING_HOLD:    # default target = current heading
+        else:
+            self.depth_plot.set_target(None)
+        if mode is Mode.HEADING_HOLD:      # default target = current heading
             self.heading_hold.set_target(s.yaw)
             self.controls.heading_spin.setValue(round(s.yaw, 1))
         self.status.showMessage(f"Mode: {mode.value}", 2000)
+
+    def _set_target_depth(self, depth_m: float) -> None:
+        self.depth_hold.set_target(depth_m)
+        self.depth_plot.set_target(self.depth_hold.target if self.mode is Mode.DEPTH_HOLD else None)
 
     def _reset_controllers(self) -> None:
         self.depth_hold.reset()
         self.heading_hold.reset()
 
     # ------------------------------------------------------------ input
-    def eventFilter(self, obj, ev):
-        et = ev.type()
-        if et in (QEvent.KeyPress, QEvent.KeyRelease):
-            fw = QApplication.focusWidget()
-            if isinstance(fw, (QLineEdit, QAbstractSpinBox)):
-                return False                      # let the user type numbers
-            key = ev.key()
-            if ev.isAutoRepeat():
-                return key in KEY_MAP
-            if et == QEvent.KeyPress:
-                if key == Qt.Key_Space:
-                    self.disarm(); return True
-                if key in KEY_MAP:
-                    self._keys.add(key); return True
-            else:
-                self._keys.discard(key)
-                if key in KEY_MAP:
-                    return True
-        return super().eventFilter(obj, ev)
+    def keyPressEvent(self, ev):
+        """Key events reach here from any child that does not consume them
+        (spin boxes consume digits but ignore letters, so WASD works anywhere)."""
+        key = ev.key()
+        if ev.isAutoRepeat():
+            ev.accept() if key in KEY_MAP else super().keyPressEvent(ev)
+            return
+        if key == Qt.Key_Space:
+            self.disarm(); ev.accept(); return
+        if key in KEY_MAP:
+            self._keys.add(key); ev.accept(); return
+        super().keyPressEvent(ev)
+
+    def keyReleaseEvent(self, ev):
+        key = ev.key()
+        if ev.isAutoRepeat():
+            ev.accept() if key in KEY_MAP else super().keyReleaseEvent(ev)
+            return
+        if key in KEY_MAP:
+            self._keys.discard(key); ev.accept(); return
+        super().keyReleaseEvent(ev)
+
+    def focusOutEvent(self, ev):
+        self._keys.clear()                         # never leave a key "stuck" when the window loses focus
+        super().focusOutEvent(ev)
 
     def set_joystick_command(self, cmd: Command | None) -> None:
         """Called by the joystick poller; None means no device / no input."""
@@ -179,9 +197,13 @@ class MainWindow(QMainWindow):
         self.thrust_lbl.setText(
             f"thrust  surge {c.surge:+.2f}  sway {c.sway:+.2f}  heave {c.heave:+.2f}  yaw {c.yaw:+.2f}"
             f"   |   t = {s.t:6.1f} s")
+        self.depth_plot.append(s)
+        self._ui_frame += 1
+        if self._ui_frame % (UI_HZ // 2) == 0:       # map marker at 2 Hz
+            lat, lon = self.sim.lat_lon()
+            self.map_view.update_rov(lat, lon, s.yaw)
         self.state_updated.emit(s)
 
     def closeEvent(self, ev):
         self.sim_timer.stop(); self.ui_timer.stop()
-        QApplication.instance().removeEventFilter(self)
         super().closeEvent(ev)

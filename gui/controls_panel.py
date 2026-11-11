@@ -71,10 +71,10 @@ class ControlsPanel(QGroupBox):
         self.disarm_btn.clicked.connect(self.disarm_requested)
         self.mode_combo.currentIndexChanged.connect(
             lambda i: self.mode_changed.emit(self.mode_combo.itemData(i)))
-        self.depth_apply.clicked.connect(lambda: self.target_depth_set.emit(self.depth_spin.value()))
-        self.heading_apply.clicked.connect(lambda: self.target_heading_set.emit(self.heading_spin.value()))
-        self.depth_spin.editingFinished.connect(lambda: self.target_depth_set.emit(self.depth_spin.value()))
-        self.heading_spin.editingFinished.connect(lambda: self.target_heading_set.emit(self.heading_spin.value()))
+        self.depth_apply.clicked.connect(self._apply_depth)
+        self.heading_apply.clicked.connect(self._apply_heading)
+        self.depth_spin.editingFinished.connect(self._apply_depth)
+        self.heading_spin.editingFinished.connect(self._apply_heading)
         self._sync_target_enabled(Mode.MANUAL)
         self.mode_changed.connect(self._sync_target_enabled)
 
@@ -84,6 +84,14 @@ class ControlsPanel(QGroupBox):
         w = QWidget(); h = QHBoxLayout(w); h.setContentsMargins(0, 0, 0, 0)
         h.addWidget(spin, 1); h.addWidget(btn)
         return w
+
+    def _apply_depth(self) -> None:
+        self.target_depth_set.emit(self.depth_spin.value())
+        self.depth_spin.clearFocus()        # hand keyboard control back to the dashboard
+
+    def _apply_heading(self) -> None:
+        self.target_heading_set.emit(self.heading_spin.value())
+        self.heading_spin.clearFocus()
 
     def _sync_target_enabled(self, mode: Mode) -> None:
         self.depth_spin.setEnabled(mode is Mode.DEPTH_HOLD)
