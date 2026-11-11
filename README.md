@@ -20,6 +20,7 @@ Video walkthrough: [`docs/walkthrough.mp4`](docs/walkthrough.mp4) (77 s, interfa
 | Safety: zero thrust when disarmed; zero thrust after 1 s without input in Manual | `rov_sim/safety.py` |
 | Live depth-vs-time plot | `gui/depth_plot.py` (QPainter, no plotting library) |
 | OpenStreetMap view with vehicle marker and trail | `gui/map_view.py` + `gui/map.html` (Leaflet, vendored) |
+| Map centred on the operator's real location | `gui/location.py` (GPS/OS location → IP geolocation → default) |
 | Responsive UI during simulation | 50 Hz sim timer, 20 Hz UI timer, 2 Hz map updates |
 | Optional extras: CSV logging, simulated water current, unit tests | `logging_util/`, controls panel checkbox, `tests/` |
 
@@ -38,6 +39,13 @@ python3 -m venv .venv
 
 or simply `./run.sh` (creates the venv on first run). Run the tests with
 `.venv/bin/python -m pytest`.
+
+The map's launch point is the operator's current location (see *Launch
+origin* below). To pin it manually, e.g. for an offline demo:
+
+```bash
+.venv/bin/python main.py --origin 28.6654,77.4391     # or: ROV_ORIGIN=28.6654,77.4391 ./run.sh
+```
 
 ## Controls
 
@@ -111,7 +119,22 @@ Command: `surge, sway, heave, yaw` each in [-1, 1].
 * **Battery** – 16.8 V full, slow linear discharge plus sag proportional to
   total thrust demand; floor 12 V.
 * **Water current** (optional) – constant velocity added in the world frame.
-* **Map position** – flat-earth offset from a fixed launch point (Pune, 18.5204 N 73.8567 E).
+* **Map position** – flat-earth offset from the launch origin (metres → degrees).
+
+## Launch origin (operator location)
+
+At start-up `gui/location.py` resolves where the operator is and the map
+re-centres there; the status bar and the map HUD say which source was used.
+
+| Order | Source | Typical accuracy | Notes |
+|---|---|---|---|
+| 1 | `--origin LAT,LON` / `ROV_ORIGIN` | exact | skips the lookup entirely |
+| 2 | OS location service via **QtPositioning** | GPS: metres; Wi-Fi: tens of metres | real GPS receiver if the machine has one, else Windows Location / macOS CoreLocation / geoclue2 on Linux; 8 s timeout |
+| 3 | **IP geolocation** over HTTPS (ipapi.co, then ipinfo.io) | city level, a few km | needs internet; the service sees the machine's public IP |
+| 4 | built-in default (Pune, India) | – | only if everything above fails or is offline |
+
+The vehicle's `x, y` are metres from that origin, so changing the origin moves
+the launch marker without touching the simulation state.
 
 ## Hold modes
 
@@ -144,20 +167,26 @@ the window clears held keys when it loses focus, so a key can never be "stuck".
 .venv/bin/python -m pytest -q      # 25 tests, < 1 s
 ```
 
-Covers: disarmed ⇒ zero thrust, watchdog timing, clamping, thruster lag,
+Covers (30 tests): disarmed ⇒ zero thrust, watchdog timing, clamping, thruster lag,
 terminal velocity vs. drag, surface clamp, heading wrap, battery drain/sag,
 water-current drift, lat/lon offset, PID clamping/anti-windup, depth-hold
 convergence (both directions), heading-hold shortest path, operator axes kept
-in hold modes, joystick dead-zone/mapping, CSV logger output.
+in hold modes, joystick dead-zone/mapping, CSV logger output, origin
+rebasing, `--origin` parsing, IP-geolocation payload parsing.
 
 ## Tools
 
-* `tools/soak_test.py` – 2-minute responsiveness soak (tick jitter, memory, CSV rows).
+* `tools/soak.py` – 2-minute responsiveness soak (tick jitter, memory, CSV rows).
+  (`pytest.ini` limits collection to `tests/` so this script is never imported as a test.)
 * `tools/record_walkthrough.py` – regenerates `docs/walkthrough.mp4` from a scripted scenario (needs ffmpeg).
 
 ## Known limitations
 
 * Map tiles need internet access; the marker, trail and HUD still work offline.
+* Most desktop machines have no GPS receiver, so the origin usually comes from
+  the OS Wi-Fi positioning or, failing that, IP geolocation (city level). On
+  Linux, geoclue may deny access for the user, in which case the IP fallback is
+  used; use `--origin` for an exact point.
 * Roll and pitch are not controlled axes (the brief lists them as displayed
   values only); they are derived from accelerations.
 * No gamepad was available during development; the pygame mapping follows the

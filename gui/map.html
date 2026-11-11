@@ -21,7 +21,7 @@
 </head>
 <body>
 <div id="map"></div>
-<div id="hud">lat 0.000000<br>lon 0.000000<br>hdg 0.0°</div>
+<div id="hud">lat 0.000000<br>lon 0.000000<br>hdg 0.0°<br><span id="origin">origin: locating…</span></div>
 <div id="offline">Map tiles unavailable (offline) – vehicle track still shown</div>
 <script>
   var ORIGIN = [18.5204, 73.8567];
@@ -37,7 +37,7 @@
                  'fill="#39d353" stroke="#0b2d14" stroke-width="1.5"/></svg>';
   var icon = L.divIcon({ className: 'rov-icon', html: arrowSvg, iconSize: [0, 0] });
   var marker = L.marker(ORIGIN, { icon: icon, zIndexOffset: 1000 }).addTo(map);
-  L.circleMarker(ORIGIN, { radius: 4, color: '#ffb347', fillOpacity: 1 }).addTo(map).bindTooltip('Launch point');
+  var launch = L.circleMarker(ORIGIN, { radius: 4, color: '#ffb347', fillOpacity: 1 }).addTo(map).bindTooltip('Launch point');
   var trail = L.polyline([], { color: '#7fc8ff', weight: 2, opacity: 0.9 }).addTo(map);
   var MAX_TRAIL = 2000;
   var follow = true;
@@ -58,11 +58,23 @@
     var el = marker.getElement();
     if (el) { var a = el.querySelector('.rov-arrow'); if (a) a.style.transform = 'rotate(' + hdg + 'deg)'; }
     var pts = trail.getLatLngs(); pts.push(ll); if (pts.length > MAX_TRAIL) pts.shift(); trail.setLatLngs(pts);
-    document.getElementById('hud').innerHTML = 'lat ' + lat.toFixed(6) + '<br>lon ' + lon.toFixed(6) + '<br>hdg ' + hdg.toFixed(1) + '°';
+    document.getElementById('hud').innerHTML = 'lat ' + lat.toFixed(6) + '<br>lon ' + lon.toFixed(6) + '<br>hdg ' + hdg.toFixed(1) + '°' +
+        '<br><span id="origin">' + originLabel + '</span>';
     if (follow && !map.getBounds().pad(-0.3).contains(ll)) map.panTo(ll);
     return true;
   }
   function clearTrail() { trail.setLatLngs([]); }
+
+  var originLabel = 'origin: locating…';
+  // Called from Python once the operator's location is known.
+  function setOrigin(lat, lon, label) {
+    ORIGIN = [lat, lon];
+    launch.setLatLng(ORIGIN); marker.setLatLng(ORIGIN); trail.setLatLngs([]);
+    originLabel = 'origin: ' + label;
+    var o = document.getElementById('origin'); if (o) o.textContent = originLabel;
+    follow = true; map.setView(ORIGIN, 18);
+    return true;
+  }
 </script>
 </body>
 </html>

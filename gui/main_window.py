@@ -22,6 +22,7 @@ from .depth_plot import DepthPlot
 from .telemetry_panel import TelemetryPanel
 from .controls_panel import ControlsPanel
 from .joystick import JoystickReader
+from .location import LocationProvider
 from logging_util.csv_logger import CsvLogger
 
 SIM_HZ = 50
@@ -38,7 +39,7 @@ KEY_MAP = {
 class MainWindow(QMainWindow):
     state_updated = Signal(object)   # ROVState, emitted at UI_HZ for plot/map/logger
 
-    def __init__(self):
+    def __init__(self, origin: tuple[float, float] | None = None):
         super().__init__()
         self.setWindowTitle("ROV Telemetry Ground Station")
         self.resize(1200, 720)
@@ -101,6 +102,12 @@ class MainWindow(QMainWindow):
         self.joystick.device_changed.connect(self.controls.set_joystick_name)
         self.controls.set_joystick_name(self.joystick.device_name)
 
+        # Launch origin = operator's location (GPS/OS -> IP -> default); async.
+        self.origin_source = "locating..."
+        self.location = LocationProvider(manual=origin, parent=self)
+        self.location.located.connect(self._on_located)
+        self.location.start()
+
         central.setFocusPolicy(Qt.StrongFocus)
         central.setFocus()
 
@@ -144,6 +151,12 @@ class MainWindow(QMainWindow):
     def _set_target_depth(self, depth_m: float) -> None:
         self.depth_hold.set_target(depth_m)
         self.depth_plot.set_target(self.depth_hold.target if self.mode is Mode.DEPTH_HOLD else None)
+
+    def _on_located(self, lat: float, lon: float, source: str) -> None:
+        self.sim.set_origin(lat, lon)
+        self.origin_source = source
+        self.map_view.set_origin(lat, lon, source)
+        self.status.showMessage(f"Launch origin {lat:.5f}, {lon:.5f} from {source}", 8000)
 
     def _toggle_log(self, on: bool) -> None:
         if on:

@@ -1,7 +1,7 @@
 """Soak test: runs the real window for DUR seconds (default 120) with modes cycling,
 CSV logging and water current on, and reports sim-tick jitter and memory.
 
-    DUR=120 .venv/bin/python tools/soak_test.py
+    DUR=120 .venv/bin/python tools/soak.py
 """
 import sys, time, statistics, os
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))); sys.path.insert(0, ROOT)

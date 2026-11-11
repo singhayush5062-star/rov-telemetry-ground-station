@@ -184,3 +184,5 @@ pip install -r requirements.txt
 | 11 Nov | Leaflet 1.9.4 vendored under `gui/vendor/leaflet` | No CDN dependency at demo time; only tiles need the network. |
 | 11 Nov | Dropped pyqtgraph, wrote a `QPainter` plot | pyqtgraph aborted with a refcount error after ~10 s on PySide6 6.12. |
 | 11 Nov | PySide6 pinned `<6.12` (6.9.3 installed) | The same refcount abort reproduced in a plain `QPainter.drawLine` call on 6.12.0; 6.9.3 passed a 2-minute soak (5,875 ticks, p99 22.7 ms, memory flat). |
+| 11 Nov | Launch origin from the operator's location (`gui/location.py`): `--origin` → QtPositioning (GPS/OS) → IP geolocation → default | Requested after submission review: the map should show where the operator actually is. Each stage has a timeout; the map re-centres when a fix arrives. |
+| 11 Nov | `pytest.ini` with `testpaths = tests` | `tools/soak_test.py` matched pytest's `*_test.py` pattern and ran the 2-minute soak during collection; renamed to `tools/soak.py` too. |

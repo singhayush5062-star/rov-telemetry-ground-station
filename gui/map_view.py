@@ -1,6 +1,7 @@
 """OpenStreetMap view embedded with QWebEngineView + Leaflet (gui/map.html)."""
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from PySide6.QtCore import QUrl, Signal
@@ -17,6 +18,7 @@ class MapView(QWebEngineView):
         super().__init__(parent)
         self._ready = False
         self._pending: tuple[float, float, float] | None = None
+        self._pending_origin: str | None = None
         # map.html is a local file. Chromium blocks remote sub-resources (OSM
         # tiles) from file:// pages unless LocalContentCanAccessRemoteUrls is on,
         # and once that is on, Qt 6.12 also needs LocalContentCanAccessFileUrls
@@ -30,6 +32,8 @@ class MapView(QWebEngineView):
     def _on_loaded(self, ok: bool) -> None:
         self._ready = ok
         self.ready.emit(ok)
+        if ok and self._pending_origin:
+            self.page().runJavaScript(self._pending_origin)
         if ok and self._pending:
             self.update_rov(*self._pending)
 
@@ -42,3 +46,10 @@ class MapView(QWebEngineView):
     def clear_trail(self) -> None:
         if self._ready:
             self.page().runJavaScript("clearTrail();")
+
+    def set_origin(self, lat: float, lon: float, label: str) -> None:
+        js = f"setOrigin({lat:.7f}, {lon:.7f}, {json.dumps(label)});"
+        if self._ready:
+            self.page().runJavaScript(js)
+        else:
+            self._pending_origin = js

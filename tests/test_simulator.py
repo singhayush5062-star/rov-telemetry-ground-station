@@ -70,8 +70,16 @@ def test_water_current_drifts_vehicle():
     assert abs(s.y - 5.0) < 0.1 and abs(s.x) < 1e-6
 
 
-def test_lat_lon_offset():
+def test_lat_lon_offset_from_default_origin():
     sim = ROVSimulator()
     sim.s.x = 111.32  # ~0.001 deg lat
     lat, lon = sim.lat_lon()
     assert math.isclose(lat - 18.5204, 0.001, rel_tol=1e-3)
+
+
+def test_set_origin_rebases_position():
+    sim = ROVSimulator()
+    sim.s.x = 111.32; sim.s.y = 0.0
+    sim.set_origin(28.6654, 77.4391)
+    lat, lon = sim.lat_lon()
+    assert math.isclose(lat, 28.6664, abs_tol=1e-5) and math.isclose(lon, 77.4391, abs_tol=1e-9)

@@ -11,7 +11,9 @@ Model summary (4 controlled DOF + derived roll/pitch):
     acceleration plus a little noise so the display is alive.
   - Battery: slow linear discharge plus sag proportional to total thrust.
   - Position is integrated in a local tangent plane and converted to
-    lat/lon with a flat-earth offset from ORIGIN for the map view.
+    lat/lon with a flat-earth offset from the launch origin for the map view.
+    The origin defaults to DEFAULT_ORIGIN and is normally replaced at start-up
+    by the operator's real location (see gui/location.py).
 """
 from __future__ import annotations
 
@@ -87,17 +89,22 @@ class ROVParams:
     noise: float = 0.15           # deg roll/pitch noise amplitude
 
 
-# Origin for the map (Pune, India - arbitrary but plausible).
-ORIGIN_LAT = 18.5204
-ORIGIN_LON = 73.8567
+# Fallback launch origin used only when no real location is available.
+DEFAULT_ORIGIN = (18.5204, 73.8567)      # Pune, India
 _M_PER_DEG_LAT = 111_320.0
 
 
 class ROVSimulator:
-    def __init__(self, params: ROVParams | None = None, seed: int | None = 0):
+    def __init__(self, params: ROVParams | None = None, seed: int | None = 0,
+                 origin: tuple[float, float] = DEFAULT_ORIGIN):
         self.p = params or ROVParams()
         self.s = ROVState(battery_v=self.p.battery_full)
         self._rng = random.Random(seed)
+        self.origin_lat, self.origin_lon = origin
+
+    def set_origin(self, lat: float, lon: float) -> None:
+        """Move the launch point; the vehicle's x/y offsets are kept."""
+        self.origin_lat, self.origin_lon = float(lat), float(lon)
 
     def reset(self) -> None:
         self.s = ROVState(battery_v=self.p.battery_full)
@@ -168,6 +175,6 @@ class ROVSimulator:
 
     # --------------------------------------------------------------- helpers
     def lat_lon(self) -> tuple[float, float]:
-        lat = ORIGIN_LAT + self.s.x / _M_PER_DEG_LAT
-        lon = ORIGIN_LON + self.s.y / (_M_PER_DEG_LAT * math.cos(math.radians(ORIGIN_LAT)))
+        lat = self.origin_lat + self.s.x / _M_PER_DEG_LAT
+        lon = self.origin_lon + self.s.y / (_M_PER_DEG_LAT * math.cos(math.radians(self.origin_lat)))
         return lat, lon
