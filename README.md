@@ -29,7 +29,8 @@ Requires Python 3.9+ on Linux, macOS or Windows. Internet access is only needed
 for map tiles (the app works offline; the map shows the track over a blank base).
 
 ```bash
-git clone <this repo> rov_ground_station && cd rov_ground_station
+git clone https://github.com/singhayush5062-star/rov-telemetry-ground-station.git
+cd rov-telemetry-ground-station
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 .venv/bin/python main.py
