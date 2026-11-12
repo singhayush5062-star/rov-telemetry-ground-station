@@ -11,6 +11,7 @@ from rov_sim.safety import Mode
 class ControlsPanel(QGroupBox):
     arm_requested = Signal()
     disarm_requested = Signal()
+    reset_requested = Signal()
     mode_changed = Signal(object)          # Mode
     target_depth_set = Signal(float)
     target_heading_set = Signal(float)
@@ -33,6 +34,12 @@ class ControlsPanel(QGroupBox):
             b.setFocusPolicy(Qt.NoFocus)
             row.addWidget(b)
         lay.addLayout(row)
+
+        self.reset_btn = QPushButton("RESET SIMULATION")
+        self.reset_btn.setObjectName("resetBtn")
+        self.reset_btn.setFocusPolicy(Qt.NoFocus)
+        self.reset_btn.setToolTip("Disarm, return the vehicle to the launch point, full battery, clear plot and trail")
+        lay.addWidget(self.reset_btn)
 
         # Mode
         form = QFormLayout()
@@ -73,8 +80,9 @@ class ControlsPanel(QGroupBox):
         lay.addLayout(extras)
 
         help_lbl = QLabel(
-            "Keyboard (Manual):  W/S surge   A/D sway   Q/E yaw   R/F heave\n"
-            "Space = emergency disarm.  Gamepad: left stick surge/sway, right stick yaw/heave, A = arm, B = disarm."
+            "Keyboard (Manual):  W/S or \u2191/\u2193 surge   A/D sway   Q/E or \u2190/\u2192 yaw   "
+            "R/F or PgUp/PgDn heave.  Space = emergency disarm.\n"
+            "Gamepad: left stick surge/sway, right stick yaw/heave, A = arm, B = disarm."
         )
         help_lbl.setObjectName("helpText")
         help_lbl.setWordWrap(True)
@@ -84,6 +92,7 @@ class ControlsPanel(QGroupBox):
         # Wiring
         self.arm_btn.clicked.connect(self.arm_requested)
         self.disarm_btn.clicked.connect(self.disarm_requested)
+        self.reset_btn.clicked.connect(self.reset_requested)
         self.mode_combo.currentIndexChanged.connect(
             lambda i: self.mode_changed.emit(self.mode_combo.itemData(i)))
         self.depth_apply.clicked.connect(self._apply_depth)

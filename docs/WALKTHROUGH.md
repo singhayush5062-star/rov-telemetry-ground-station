@@ -95,17 +95,21 @@ seeds the target with the current depth/heading so nothing lurches.
 * `_refresh_ui()` updates the telemetry labels, appends a plot sample,
   updates the map every 10th frame (2 Hz), and logs CSV every 2nd frame (10 Hz).
 * Keyboard: `keyPressEvent`/`keyReleaseEvent` on the window keep a set of held
-  keys. The plot and map have `NoFocus`, so unhandled keys bubble up from
+  keys; `KEY_MAP` binds both WASD/QE/RF and the arrow keys (↑↓ surge, ←→ yaw,
+  PgUp/PgDn heave) to the same four axes. The plot and map have `NoFocus`, so unhandled keys bubble up from
   anywhere. (An application-wide event filter was tried first and crashes
   PySide6 as soon as a QtWebEngine widget exists.)
 * `_on_located()` moves the launch origin once the operator's location arrives.
+* `reset_simulation()` disarms, calls `sim.reset()` (fresh state, origin kept),
+  returns to Manual, zeroes targets, clears the plot and the map trail, and
+  stops CSV logging – a clean restart without relaunching the app.
 
 ## 7. Widgets
 
 * `telemetry_panel.py` – labels for armed, mode, roll, pitch, yaw, depth,
   battery. Colour comes from the stylesheet via dynamic properties
   (`armed="true"`, `low="true"`).
-* `controls_panel.py` – ARM/DISARM, mode combo, target spin boxes with Set,
+* `controls_panel.py` – ARM/DISARM, RESET SIMULATION, mode combo, target spin boxes with Set,
   CSV log toggle, water-current checkbox, joystick status. Target inputs are
   only enabled in their mode and release keyboard focus after Set.
 * `depth_plot.py` – a `QWidget` whose `paintEvent` draws grid, axes, a dashed

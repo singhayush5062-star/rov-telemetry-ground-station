@@ -53,11 +53,12 @@ origin* below). To pin it manually, e.g. for an offline demo:
 | Input | Action |
 |---|---|
 | **ARM / DISARM** buttons, or gamepad **A / B** | arm / disarm (thrust is forced to zero while disarmed) |
+| **RESET SIMULATION** | disarm, Manual mode, vehicle back at the launch point, full battery, plot and trail cleared |
 | **Space** | emergency disarm |
-| **W / S** | surge forward / back |
+| **W / S** or **↑ / ↓** | surge forward / back |
 | **A / D** | sway left / right |
-| **Q / E** | yaw left / right |
-| **R / F** | heave up / down |
+| **Q / E** or **← / →** | yaw left / right |
+| **R / F** or **PgUp / PgDn** | heave up / down |
 | Gamepad left stick | surge / sway |
 | Gamepad right stick | yaw / heave |
 | Mode combo | Manual, Depth Hold, Heading Hold |

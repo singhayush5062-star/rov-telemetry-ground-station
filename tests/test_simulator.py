@@ -83,3 +83,15 @@ def test_set_origin_rebases_position():
     sim.set_origin(28.6654, 77.4391)
     lat, lon = sim.lat_lon()
     assert math.isclose(lat, 28.6664, abs_tol=1e-5) and math.isclose(lon, 77.4391, abs_tol=1e-9)
+
+
+def test_reset_returns_to_fresh_state_but_keeps_origin():
+    sim = ROVSimulator(); sim.set_origin(28.6654, 77.4391)
+    run(sim, Command(surge=1.0, heave=1.0, yaw=0.5), 5.0)
+    assert sim.s.depth > 0 and sim.s.t > 0 and sim.s.battery_v < sim.p.battery_full
+    sim.reset()
+    s = sim.s
+    assert s.t == 0 and s.x == 0 and s.y == 0 and s.depth == 0 and s.yaw == 0
+    assert s.u == s.v == s.w == s.r == 0 and s.thrust.is_zero()
+    assert s.battery_v == sim.p.battery_full
+    assert (sim.origin_lat, sim.origin_lon) == (28.6654, 77.4391)

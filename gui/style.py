@@ -19,6 +19,8 @@ QPushButton#armBtn    { background: #1f6f3a; font-weight: bold; font-size: 15px;
 QPushButton#armBtn:disabled { background: #1a2b22; color: #4f6b58; }
 QPushButton#disarmBtn { background: #8a2b2b; font-weight: bold; font-size: 15px; }
 QPushButton#disarmBtn:disabled { background: #2b1f1f; color: #6b4f4f; }
+QPushButton#resetBtn  { background: #2f3a52; border-color: #4a5a7a; font-weight: bold; }
+QPushButton#resetBtn:hover { background: #3a4866; }
 QComboBox, QDoubleSpinBox { background: #121620; border: 1px solid #3e4756; border-radius: 4px; padding: 4px; }
 QComboBox QAbstractItemView { background: #121620; selection-background-color: #2a3140; }
 QStatusBar { background: #121620; color: #9fb3c8; font-family: monospace; }

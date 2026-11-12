@@ -29,10 +29,15 @@ SIM_HZ = 50
 UI_HZ = 20
 
 KEY_MAP = {
+    # letters
     Qt.Key_W: ("surge", +1), Qt.Key_S: ("surge", -1),
     Qt.Key_D: ("sway", +1), Qt.Key_A: ("sway", -1),
     Qt.Key_E: ("yaw", +1), Qt.Key_Q: ("yaw", -1),
     Qt.Key_F: ("heave", +1), Qt.Key_R: ("heave", -1),
+    # arrows: Up/Down surge, Left/Right turn, PageUp/PageDown rise/dive
+    Qt.Key_Up: ("surge", +1), Qt.Key_Down: ("surge", -1),
+    Qt.Key_Right: ("yaw", +1), Qt.Key_Left: ("yaw", -1),
+    Qt.Key_PageDown: ("heave", +1), Qt.Key_PageUp: ("heave", -1),
 }
 
 
@@ -89,6 +94,7 @@ class MainWindow(QMainWindow):
         # --- wiring
         self.controls.arm_requested.connect(self.arm)
         self.controls.disarm_requested.connect(self.disarm)
+        self.controls.reset_requested.connect(self.reset_simulation)
         self.controls.mode_changed.connect(self.set_mode)
         self.controls.target_depth_set.connect(self._set_target_depth)
         self.controls.target_heading_set.connect(self.heading_hold.set_target)
@@ -131,6 +137,25 @@ class MainWindow(QMainWindow):
         self._reset_controllers()
         self._safe_cmd = Command.zero()           # takes effect immediately, not next tick
         self.status.showMessage("DISARMED - thrust forced to zero", 2000)
+
+    def reset_simulation(self) -> None:
+        """Back to a fresh start: disarmed, Manual, vehicle at the launch point,
+        full battery, empty plot and trail. The launch origin is kept."""
+        self.disarm()
+        self._keys.clear()
+        self.watchdog.reset()
+        self.sim.reset()
+        self.controls.log_btn.setChecked(False)        # stops the CSV logger if running
+        self.controls.set_mode(Mode.MANUAL)            # -> set_mode() resets controllers/target line
+        self.mode = Mode.MANUAL
+        self.depth_hold.set_target(0.0); self.heading_hold.set_target(0.0)
+        self.controls.depth_spin.setValue(0.0); self.controls.heading_spin.setValue(0.0)
+        self.depth_plot.clear_history(); self.depth_plot.set_target(None)
+        self.map_view.clear_trail()
+        lat, lon = self.sim.lat_lon()
+        self.map_view.update_rov(lat, lon, self.sim.s.yaw)
+        self._refresh_ui()
+        self.status.showMessage("Simulation reset - disarmed, Manual, vehicle at launch point", 4000)
 
     def set_mode(self, mode: Mode) -> None:
         if mode is self.mode:
