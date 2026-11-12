@@ -10,9 +10,9 @@ from __future__ import annotations
 
 import time
 
-from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtCore import Qt, QTimer, Signal, QEvent
 from PySide6.QtWidgets import (QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
-                               QLabel, QStatusBar)
+                               QLabel, QStatusBar, QAbstractSpinBox, QLineEdit)
 
 from rov_sim.simulator import ROVSimulator, Command, ROVState
 from rov_sim.safety import ArmState, Mode, InputWatchdog, apply_safety
@@ -77,10 +77,8 @@ class MainWindow(QMainWindow):
         right = QVBoxLayout()
         self.depth_plot = DepthPlot()
         self.map_view = MapView()
-        # Neither view takes keyboard focus, so unhandled key events bubble up
-        # to MainWindow.keyPressEvent. (An application-wide event filter is NOT
-        # used: PySide6 crashes when such a filter sees QtWebEngine's internal
-        # widget events.)
+        # Neither view takes keyboard focus (and driving keys are additionally
+        # captured at the window level, see _handle_key).
         self.depth_plot.setFocusPolicy(Qt.NoFocus)
         self.map_view.setFocusPolicy(Qt.NoFocus)
         right.addWidget(self.depth_plot, 1)
@@ -116,6 +114,9 @@ class MainWindow(QMainWindow):
 
         central.setFocusPolicy(Qt.StrongFocus)
         central.setFocus()
+
+        # --- key capture at the top-level QWindow (see _handle_key)
+        self._window_filter_installed = False
 
         # --- timers
         self.sim_timer = QTimer(self); self.sim_timer.setTimerType(Qt.PreciseTimer)
@@ -201,27 +202,52 @@ class MainWindow(QMainWindow):
         self.heading_hold.reset()
 
     # ------------------------------------------------------------ input
-    def keyPressEvent(self, ev):
-        """Key events reach here from any child that does not consume them
-        (spin boxes consume digits but ignore letters, so WASD works anywhere)."""
+    # ------------------------------------------------------------ keys
+    # Driving keys are intercepted on the top-level QWindow, i.e. before Qt
+    # routes the event to whichever child widget has focus. This keeps the
+    # arrows working even if the map (Chromium) or another child has taken
+    # focus after a mouse click. Only the window's own events are filtered,
+    # never the whole application (an app-wide filter crashes with QtWebEngine).
+    def showEvent(self, ev):
+        super().showEvent(ev)
+        if not self._window_filter_installed and self.windowHandle() is not None:
+            self.windowHandle().installEventFilter(self)
+            self._window_filter_installed = True
+
+    def eventFilter(self, obj, ev):
+        if obj is self.windowHandle() and ev.type() in (QEvent.KeyPress, QEvent.KeyRelease):
+            if self._handle_key(ev, ev.type() == QEvent.KeyPress):
+                return True
+        return super().eventFilter(obj, ev)
+
+    def _handle_key(self, ev, pressed: bool) -> bool:
+        """Return True if the event was a driving key and has been consumed."""
         key = ev.key()
+        if key == Qt.Key_Space:          # emergency disarm: always, whatever has focus
+            if pressed and not ev.isAutoRepeat():
+                self.disarm()
+            return True
+        if key not in KEY_MAP:
+            return False
+        fw = self.focusWidget()          # focused child of this window (independent of activation)
+        if isinstance(fw, (QAbstractSpinBox, QLineEdit)):
+            return False                 # let the operator type / step a target value
         if ev.isAutoRepeat():
-            ev.accept() if key in KEY_MAP else super().keyPressEvent(ev)
-            return
-        if key == Qt.Key_Space:
-            self.disarm(); ev.accept(); return
-        if key in KEY_MAP:
-            self._keys.add(key); ev.accept(); return
-        super().keyPressEvent(ev)
+            return True                  # held key: state already recorded
+        if pressed:
+            self._keys.add(key)
+        else:
+            self._keys.discard(key)
+        return True
+
+    def keyPressEvent(self, ev):
+        # Fallback path (e.g. events synthesised directly on the widget tree).
+        if not self._handle_key(ev, True):
+            super().keyPressEvent(ev)
 
     def keyReleaseEvent(self, ev):
-        key = ev.key()
-        if ev.isAutoRepeat():
-            ev.accept() if key in KEY_MAP else super().keyReleaseEvent(ev)
-            return
-        if key in KEY_MAP:
-            self._keys.discard(key); ev.accept(); return
-        super().keyReleaseEvent(ev)
+        if not self._handle_key(ev, False):
+            super().keyReleaseEvent(ev)
 
     def focusOutEvent(self, ev):
         self._keys.clear()                         # never leave a key "stuck" when the window loses focus

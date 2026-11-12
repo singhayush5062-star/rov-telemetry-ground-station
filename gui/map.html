@@ -25,7 +25,7 @@
 <div id="offline">Map tiles unavailable (offline) – vehicle track still shown</div>
 <script>
   var ORIGIN = [18.5204, 73.8567];
-  var map = L.map('map', { zoomControl: true, attributionControl: true }).setView(ORIGIN, 18);
+  var map = L.map('map', { zoomControl: true, attributionControl: true, keyboard: false }).setView(ORIGIN, 18);  // keyboard off: arrows drive the ROV, not the map
   var tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
   }).addTo(map);

@@ -94,11 +94,16 @@ seeds the target with the current depth/heading so nothing lurches.
 * `_tick()` is the one-sentence version from section 1, literally four lines.
 * `_refresh_ui()` updates the telemetry labels, appends a plot sample,
   updates the map every 10th frame (2 Hz), and logs CSV every 2nd frame (10 Hz).
-* Keyboard: `keyPressEvent`/`keyReleaseEvent` on the window keep a set of held
-  keys; `KEY_MAP` binds both WASD/QE/RF and the arrow keys (↑↓ surge, ←→ yaw,
-  PgUp/PgDn heave) to the same four axes. The plot and map have `NoFocus`, so unhandled keys bubble up from
-  anywhere. (An application-wide event filter was tried first and crashes
-  PySide6 as soon as a QtWebEngine widget exists.)
+* Keyboard: driving keys are captured by an event filter on the top-level
+  `QWindow` (`_handle_key`), i.e. before Qt routes the event to whichever
+  child has focus, so they work even after clicking on the map. `KEY_MAP`
+  binds both WASD/QE/RF and the arrow keys (↑↓ surge, ←→ yaw, PgUp/PgDn
+  heave) to the same four axes; a held key is one entry in a set, auto-repeat
+  events are swallowed. Space disarms regardless of focus. The only exception
+  is a focused spin box, which keeps its own arrow/typing behaviour. (An
+  application-wide filter was tried first and crashes PySide6 as soon as a
+  QtWebEngine widget exists; filtering only the window's own events is safe,
+  as the soak test confirms.)
 * `_on_located()` moves the launch origin once the operator's location arrives.
 * `reset_simulation()` disarms, calls `sim.reset()` (fresh state, origin kept),
   returns to Manual, zeroes targets, clears the plot and the map trail, and

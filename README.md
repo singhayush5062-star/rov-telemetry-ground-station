@@ -54,7 +54,7 @@ origin* below). To pin it manually, e.g. for an offline demo:
 |---|---|
 | **ARM / DISARM** buttons, or gamepad **A / B** | arm / disarm (thrust is forced to zero while disarmed) |
 | **RESET SIMULATION** | disarm, Manual mode, vehicle back at the launch point, full battery, plot and trail cleared |
-| **Space** | emergency disarm |
+| **Space** | emergency disarm (works whatever has focus) |
 | **W / S** or **↑ / ↓** | surge forward / back |
 | **A / D** | sway left / right |
 | **Q / E** or **← / →** | yaw left / right |
@@ -200,8 +200,9 @@ rebasing, `--origin` parsing, IP-geolocation payload parsing.
 ## Development notes / pitfalls found
 
 * An application-wide `QObject.eventFilter` segfaults PySide6 as soon as a
-  `QWebEngineView` exists, so keyboard handling uses `keyPressEvent` on the
-  window with `NoFocus` on the plot and map.
+  `QWebEngineView` exists. Driving keys are instead filtered on the top-level
+  `QWindow` only, which catches them before focus routing (so they work even
+  when the map has focus) and is stable in the soak test.
 * A `file://` page cannot load remote tiles unless
   `LocalContentCanAccessRemoteUrls` is enabled; on Qt 6.12 that alone silently
   breaks local scripts, so `LocalContentCanAccessFileUrls` is set explicitly too.
