@@ -80,9 +80,9 @@ class ControlsPanel(QGroupBox):
         lay.addLayout(extras)
 
         help_lbl = QLabel(
-            "Keyboard (Manual):  W/S or \u2191/\u2193 surge   A/D sway   Q/E or \u2190/\u2192 yaw   "
-            "R/F or PgUp/PgDn heave.  Space = emergency disarm.\n"
-            "Gamepad: left stick surge/sway, right stick yaw/heave, A = arm, B = disarm."
+            "Keyboard (Manual):  \u2191 rise / \u2193 dive (or R / F)   \u2190 \u2192 turn (or Q / E)   "
+            "W / S forward / back (or PgUp / PgDn)   A / D sway left / right.  Space = emergency disarm.\n"
+            "Gamepad: left stick forward/sway, right stick turn/dive, A = arm, B = disarm."
         )
         help_lbl.setObjectName("helpText")
         help_lbl.setWordWrap(True)

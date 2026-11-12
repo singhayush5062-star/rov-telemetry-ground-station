@@ -34,10 +34,11 @@ KEY_MAP = {
     Qt.Key_D: ("sway", +1), Qt.Key_A: ("sway", -1),
     Qt.Key_E: ("yaw", +1), Qt.Key_Q: ("yaw", -1),
     Qt.Key_F: ("heave", +1), Qt.Key_R: ("heave", -1),
-    # arrows: Up/Down surge, Left/Right turn, PageUp/PageDown rise/dive
-    Qt.Key_Up: ("surge", +1), Qt.Key_Down: ("surge", -1),
+    # arrow cluster: Up/Down = rise/dive (depth), Left/Right = turn,
+    #                PageUp/PageDown = forward/back
+    Qt.Key_Up: ("heave", -1), Qt.Key_Down: ("heave", +1),
     Qt.Key_Right: ("yaw", +1), Qt.Key_Left: ("yaw", -1),
-    Qt.Key_PageDown: ("heave", +1), Qt.Key_PageUp: ("heave", -1),
+    Qt.Key_PageUp: ("surge", +1), Qt.Key_PageDown: ("surge", -1),
 }
 
 
@@ -283,6 +284,8 @@ class MainWindow(QMainWindow):
         s = self.sim.s
         self.telemetry.update_values(s, self.armed, self.mode)
         c = self._safe_cmd
+        if c.heave < 0 and s.depth <= 0.0:
+            self.status.showMessage("At the surface - cannot rise further; press \u2193 / F to dive", 1500)
         self.thrust_lbl.setText(
             f"thrust  surge {c.surge:+.2f}  sway {c.sway:+.2f}  heave {c.heave:+.2f}  yaw {c.yaw:+.2f}"
             f"   |   t = {s.t:6.1f} s")

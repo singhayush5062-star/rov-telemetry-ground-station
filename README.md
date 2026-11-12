@@ -55,10 +55,10 @@ origin* below). To pin it manually, e.g. for an offline demo:
 | **ARM / DISARM** buttons, or gamepad **A / B** | arm / disarm (thrust is forced to zero while disarmed) |
 | **RESET SIMULATION** | disarm, Manual mode, vehicle back at the launch point, full battery, plot and trail cleared |
 | **Space** | emergency disarm (works whatever has focus) |
-| **W / S** or **↑ / ↓** | surge forward / back |
+| **↑ / ↓** or **R / F** | rise / dive (heave) |
+| **← / →** or **Q / E** | turn left / right (yaw) |
+| **W / S** or **PgUp / PgDn** | forward / back (surge) |
 | **A / D** | sway left / right |
-| **Q / E** or **← / →** | yaw left / right |
-| **R / F** or **PgUp / PgDn** | heave up / down |
 | Gamepad left stick | surge / sway |
 | Gamepad right stick | yaw / heave |
 | Mode combo | Manual, Depth Hold, Heading Hold |
@@ -185,6 +185,8 @@ rebasing, `--origin` parsing, IP-geolocation payload parsing.
 ## Known limitations
 
 * Map tiles need internet access; the marker, trail and HUD still work offline.
+* The vehicle cannot rise above the surface: a "rise" command at 0 m shows
+  thrust in the status bar but no depth change (the status bar says so).
 * Most desktop machines have no GPS receiver, so the origin usually comes from
   the OS Wi-Fi positioning or, failing that, IP geolocation (city level). On
   Linux, geoclue may deny access for the user, in which case the IP fallback is

@@ -97,8 +97,8 @@ seeds the target with the current depth/heading so nothing lurches.
 * Keyboard: driving keys are captured by an event filter on the top-level
   `QWindow` (`_handle_key`), i.e. before Qt routes the event to whichever
   child has focus, so they work even after clicking on the map. `KEY_MAP`
-  binds both WASD/QE/RF and the arrow keys (↑↓ surge, ←→ yaw, PgUp/PgDn
-  heave) to the same four axes; a held key is one entry in a set, auto-repeat
+  binds both WASD/QE/RF and the arrow cluster (↑↓ rise/dive, ←→ turn,
+  PgUp/PgDn forward/back) to the same four axes; a held key is one entry in a set, auto-repeat
   events are swallowed. Space disarms regardless of focus. The only exception
   is a focused spin box, which keeps its own arrow/typing behaviour. (An
   application-wide filter was tried first and crashes PySide6 as soon as a
