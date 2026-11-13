@@ -212,7 +212,7 @@ rebasing, `--origin` parsing, IP-geolocation payload parsing.
 
 ## AI-tool disclosure
 
-Claude Code (Anthropic, model Claude Fable 5.1) was used throughout this project:
+Claude Code (Anthropic, model Claude Sonnet 5.5) was used throughout this project:
 to draft the development plan, scaffold the module layout, write first versions
 of the simulator, controllers, widgets and tests, drive the running application
 with scripted checks, and bisect the PySide6 crashes described above. All
